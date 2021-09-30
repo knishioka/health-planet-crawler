@@ -7,6 +7,7 @@ from datetime import timedelta
 import pandas as pd
 from bs4 import BeautifulSoup
 from selenium import webdriver
+from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.webdriver import WebDriver
 
 
@@ -15,13 +16,16 @@ def main(start_date: datetime.date, end_date: datetime.date) -> pd.DataFrame:
 
     health_data = {}
     for i in range((end_date - start_date).days + 1):
-        created_on = (start_date + timedelta(i)).strftime("%Y%m%d")
-        health_data[created_on] = get_health_data(logged_in_driver, created_on)
-    return pd.DataFrame(health_data)
+        health_data[(start_date + timedelta(i)).strftime("%Y/%m/%d")] = get_health_data(
+            logged_in_driver, created_on=(start_date + timedelta(i)).strftime("%Y%m%d")
+        )
+    pd.DataFrame.from_dict(health_data, orient="index").to_csv(f"health_data_{start_date}-{end_date}.csv")
 
 
 def login() -> WebDriver:
-    driver = webdriver.Firefox()
+    options = Options()
+    options.add_argument("-headless")
+    driver = webdriver.Firefox(options=options)
     driver.get("https://www.healthplanet.jp/en/login.do")
     time.sleep(0.5)
     driver.find_element_by_name("loginId").send_keys(os.environ["HEALTH_PLANET_ID"])
@@ -70,4 +74,4 @@ if __name__ == "__main__":
         "-e", "--end-date", help="End date must be in ISO format. For example: 2020-01-01.", type=date_type
     )
     args = arg_parser.parse_args()
-    print(main(start_date=args.start_date, end_date=args.end_date))
+    main(start_date=args.start_date, end_date=args.end_date)
