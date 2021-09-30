@@ -27,10 +27,13 @@ def get_health_data(logged_in_driver: WebDriver, logged_on: str) -> dict:
         f"https://www.healthplanet.jp/en/innerscan.do?date={logged_on}"
     )
     soup = BeautifulSoup(logged_in_driver.page_source, "html.parser")
-    return {
-        e.find("th").text.strip(): e.find("td").text.split()[0]
-        for e in soup.find("div", {"id": "inputdata_area"}).find_all("tr")
-    }
+    if data_table := soup.find("div", {"id": "inputdata_area"}):
+        return {
+            e.find("th").text.strip(): e.find("td").text.split()[0]
+            for e in data_table.find_all("tr")
+        }
+    else:
+        return {}
 
 
 if __name__ == "__main__":
