@@ -1,19 +1,29 @@
+import argparse
+import datetime
 import os
+import time
+from datetime import timedelta
 
+import pandas as pd
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.firefox.webdriver import WebDriver
 
 
-def main() -> dict:
+def main(start_date: datetime.date, end_date: datetime.date) -> pd.DataFrame:
     logged_in_driver = login()
-    created_on = "20210901"
-    return {created_on: get_health_data(logged_in_driver, created_on)}
+
+    health_data = {}
+    for i in range((end_date - start_date).days + 1):
+        created_on = (start_date + timedelta(i)).strftime("%Y%m%d")
+        health_data[created_on] = get_health_data(logged_in_driver, created_on)
+    return pd.DataFrame(health_data)
 
 
 def login() -> WebDriver:
     driver = webdriver.Firefox()
     driver.get("https://www.healthplanet.jp/en/login.do")
+    time.sleep(0.5)
     driver.find_element_by_name("loginId").send_keys(os.environ["HEALTH_PLANET_ID"])
     driver.find_element_by_name("passwd").send_keys(os.environ["HEALTH_PLANET_PASSWORD"])
     driver.find_element_by_id("btnSet").click()
@@ -39,5 +49,25 @@ def get_health_data(logged_in_driver: WebDriver, created_on: str) -> dict:
         return {}
 
 
+def date_type(date_str: str) -> datetime.date:
+    """Convert date string to date object.
+
+    Args:
+        date_str: Date string.
+
+    Returns:
+        datetime.date
+    """
+    return datetime.date.fromisoformat(date_str)
+
+
 if __name__ == "__main__":
-    print(main())
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument(
+        "-s", "--start-date", help="Start date must be in ISO format. For example: 2020-01-01.", type=date_type
+    )
+    arg_parser.add_argument(
+        "-e", "--end-date", help="End date must be in ISO format. For example: 2020-01-01.", type=date_type
+    )
+    args = arg_parser.parse_args()
+    print(main(start_date=args.start_date, end_date=args.end_date))
